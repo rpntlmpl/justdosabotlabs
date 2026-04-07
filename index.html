@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Портфоліо Розробника</title>
+    <style>
+        :root {
+            --bg-color: #0f0c29;
+            --second-bg-color: #1a1a2e;
+            --main-color: #8e2de2;
+            --second-color: #4a00e0;
+            --text-color: #ffffff;
+            --gray-color: #b5b5b5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 10%;
+            background: rgba(15, 12, 41, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: 800;
+            color: var(--main-color);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        nav a {
+            font-size: 18px;
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            margin-left: 35px;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--main-color);
+        }
+
+        section {
+            min-height: 100vh;
+            padding: 100px 10% 20px;
+        }
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex-direction: column;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--main-color), #f08aff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero h3 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            max-width: 600px;
+            color: var(--gray-color);
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background: var(--main-color);
+            border-radius: 40px;
+            box-shadow: 0 0 10px var(--main-color);
+            font-size: 16px;
+            color: white;
+            letter-spacing: 1px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.5s;
+        }
+
+        .btn:hover {
+            box-shadow: 0 0 20px var(--main-color);
+            transform: scale(1.05);
+        }
+
+        .heading {
+            text-align: center;
+            font-size: 40px;
+            margin-bottom: 50px;
+        }
+
+        .skills-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .skill-box {
+            background: var(--second-bg-color);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(142, 45, 226, 0.2);
+            text-align: center;
+            transition: 0.4s;
+        }
+
+        .skill-box:hover {
+            border-color: var(--main-color);
+            transform: translateY(-10px);
+        }
+
+        .skill-box i {
+            font-size: 40px;
+            color: var(--main-color);
+            margin-bottom: 15px;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .project-card {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            height: 250px;
+            cursor: pointer;
+        }
+
+        .project-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.5s;
+        }
+
+        .project-layer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(transparent, var(--second-color));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 40px;
+            transform: translateY(100%);
+            transition: 0.5s;
+        }
+
+        .project-card:hover .project-layer {
+            transform: translateY(0);
+        }
+
+        .project-card:hover img {
+            transform: scale(1.1);
+        }
+
+        .contact form {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .contact input, .contact textarea {
+            width: 100%;
+            padding: 15px;
+            background: var(--second-bg-color);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        footer {
+            padding: 20px;
+            text-align: center;
+            background: var(--bg-color);
+            border-top: 1px solid rgba(142, 45, 226, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 20px 5%; }
+            .hero h1 { font-size: 40px; }
+            nav { display: none; } /* Для спрощення в одному файлі */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" class="logo">DevPort</a>
+        <nav>
+            <a href="#home">Головна</a>
+            <a href="#skills">Навички</a>
+            <a href="#projects">Проєкти</a>
+            <a href="#contact">Контакти</a>
+        </nav>
+    </header>
+
+    <section class="hero" id="home">
+        <h1>Привіт, я Розробник</h1>
+        <h3>Fullstack Developer</h3>
+        <p>Створюю сучасні веб-додатки з акцентом на продуктивність та естетичний дизайн. Захоплююсь інноваціями та чистим кодом.</p>
+        <a href="#contact" class="btn">Зв'язатися зі мною</a>
+    </section>
+
+    <section id="skills">
+        <h2 class="heading">Мої Навички</h2>
+        <div class="skills-container">
+            <div class="skill-box">
+                <h3>Frontend</h3>
+                <p>HTML5, CSS3, JavaScript, React, Vue. Створення адаптивних та інтерактивних інтерфейсів.</p>
+            </div>
+            <div class="skill-box">
+                <h3>Backend</h3>
+                <p>Node.js, Python, PostgreSQL, MongoDB. Розробка стабільних API та робота з базами даних.</p>
+            </div>
+            <div class="skill-box">
+                <h3>Інструменти</h3>
+                <p>Git, Docker, Figma, VS Code. Використання сучасних методологій розробки.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="projects">
+        <h2 class="heading">Проєкти</h2>
+        <div class="projects-grid">
+            <div class="project-card">
+                <div style="background: #333; height: 100%; display: flex; align-items: center; justify-content: center;">Зображення проєкту 1</div>
+                <div class="project-layer">
+                    <h4>E-commerce Platform</h4>
+                    <p>Онлайн-магазин на React та Node.js.</p>
+                </div>
+            </div>
+            <div class="project-card">
+                <div style="background: #444; height: 100%; display: flex; align-items: center; justify-content: center;">Зображення проєкту 2</div>
+                <div class="project-layer">
+                    <h4>SaaS Dashboard</h4>
+                    <p>Панель управління для аналітики даних.</p>
+                </div>
+            </div>
+            <div class="project-card">
+                <div style="background: #555; height: 100%; display: flex; align-items: center; justify-content: center;">Зображення проєкту 3</div>
+                <div class="project-layer">
+                    <h4>Mobile App</h4>
+                    <p>Застосунок для відстеження звичок.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="contact" id="contact">
+        <h2 class="heading">Напишіть мені</h2>
+        <form action="#">
+            <input type="text" placeholder="Ваше ім'я" required>
+            <input type="email" placeholder="Ваш Email" required>
+            <textarea cols="30" rows="10" placeholder="Ваше повідомлення" required></textarea>
+            <button type="submit" class="btn">Надіслати</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 Developer Portfolio. Всі права захищені.</p>
+    </footer>
+
+</body>
+</html>
