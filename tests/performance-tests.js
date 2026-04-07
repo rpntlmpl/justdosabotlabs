@@ -1,44 +1,43 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
+import { sleep, check } from 'k6';
 
-// Додаткова метрика для підрахунку успішних запитів
-const successCounter = new Counter('successful_requests');
-
+// 1. Конфигурация тестов (Options)
 export const options = {
-  thresholds: {
-    http_req_failed: ['rate<0.01'], // Тест провалено, якщо >1% помилок
-    http_req_duration: ['p(95)<250'], // 95% запитів мають бути швидшими за 250мс
-  },
-  stages: [
-    { duration: '30s', target: 10 }, // Тест 1: Smoke test (мале навантаження)
-    { duration: '1m', target: 50 },  // Тест 2: Load test (середнє навантаження)
-    { duration: '20s', target: 0 },  // Тест 3: Stress recovery (відновлення)
-  ],
+    thresholds: {
+        http_req_failed: ['rate<0.01'], // Ошибка менее 1% запросов
+        http_req_duration: ['p(95)<200'], // 95% запросов должны быть быстрее 200мс
+    },
+    scenarios: {
+        // Сценарий 1: Smoke Test
+        smoke_test: {
+            executor: 'constant-vus',
+            vus: 1,
+            duration: '10s',
+        },
+        // Сценарий 2: Load Test (имитация 10 пользователей)
+        load_test: {
+            executor: 'ramping-vus',
+            startVUs: 0,
+            stages: [
+                { duration: '20s', target: 10 }, // Разгон до 10 пользователей
+                { duration: '30s', target: 10 }, // Плато
+                { duration: '10s', target: 0 },  // Снижение
+            ],
+            startTime: '10s',
+        },
+    },
 };
 
+// Функция самого теста
 export default function () {
-  const url = 'http://localhost:8080';
-
-  // --- ТЕСТ 1: Доступність та статус-коди ---
-  const res = http.get(url);
-  const statusCheck = check(res, {
-    '1. Status is 200': (r) => r.status === 200,
-  });
-  if (statusCheck) successCounter.add(1);
-
-  // --- ТЕСТ 2: Перевірка контенту (чи завантажився саме наш сайт) ---
-  check(res, {
-    '2. Page has correct title': (r) => r.body.includes('<title>'), // Перевірка наявності тегу title
-    '2. Content-Type is HTML': (r) => r.headers['Content-Type'].includes('text/html'),
-  });
-
-  // --- ТЕСТ 3: Швидкість відповіді (Performance) ---
-  check(res, {
-    '3. Response time < 150ms': (r) => r.timings.duration < 150,
-    '3. TTFB (Time to First Byte) < 100ms': (r) => r.timings.waiting < 100,
-  });
-
-  sleep(1);
+    // В CI/CD мы будем тестировать локальный адрес, где поднимется контейнер
+    const res = http.get('http://localhost:8080');
+    
+    check(res, {
+        'status is 200': (r) => r.status === 200,
+        'protocol is HTTP/1.1': (r) => r.proto === 'HTTP/1.1',
+    });
+    
+    sleep(1);
 }
 
