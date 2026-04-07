@@ -7,17 +7,22 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. Проверка линтером (например, для HTML или Dockerfile)
+  # 1. Проверка линтером
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: ./Dockerfile
+          # Игнорируем совет указывать версии пакетов (DL3008), 
+          # чтобы линтер не "краснел" на обычный apt-get install
+          ignore: DL3008 
 
-  # 2. Сборка и Push в GitHub Container Registry
+  # 2. Сборка и Push
   build-and-push:
     needs: lint
     runs-on: ubuntu-latest
@@ -40,12 +45,18 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          # Переводим название в нижний регистр автоматически
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          # Используем теги из шага meta
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
