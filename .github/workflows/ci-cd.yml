@@ -7,25 +7,61 @@ on:
     branches: [ "main" ]
 
 jobs:
-  linter:
+  # 1. Проверка линтером
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run HTML Hint
-        run: |
-          npm install -g htmlhint
-          htmlhint index.html
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./Dockerfile
+          ignore: DL3008 
 
+  # 2. Сборка и Push
   build-and-push:
-    needs: linter
+    needs: lint
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Переводим название в нижний регистр автоматически
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+performance-test:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Log in to GHCR
@@ -35,36 +71,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/totaltarizm/project3:latest
-
-  test-quality:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run Website Container
+      # 1. Запускаем только что собранный контейнер
+      - name: Start container
         run: |
-          docker run -d --name test_app -p 8080:80 ghcr.io/totaltarizm/project3:latest
-          sleep 10
+          docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          docker run -d --name test-site -p 8080:80 ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          # Даем nginx пару секунд на старт
+          sleep 5
 
+      # 2. Запускаем k6 тесты
       - name: Run k6 Load Test
-        run: |
-          docker run --rm --network host -i -v ${{ github.workspace }}:/io -w /io grafana/k6 run load-test.js
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/performance-tests.js
 
-      - name: Cleanup
+      # 3. Очистка (остановка контейнера)
+      - name: Stop container
         if: always()
-        run: docker rm -f test_app || true
+        run: docker stop test-site && docker rm test-site
