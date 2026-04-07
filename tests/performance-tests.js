@@ -1,65 +1,43 @@
 import http from 'k6/http';
-import { sleep, check } from 'k6';
+import { check, sleep } from 'k6';
+import { Counter } from 'k6/metrics';
+
+// Додаткова метрика для підрахунку успішних запитів
+const successCounter = new Counter('successful_requests');
 
 export const options = {
-    // Общие пороги успеха для всех тестов
-    thresholds: {
-        http_req_failed: ['rate<0.01'], // Ошибок должно быть меньше 1%
-        http_req_duration: ['p(95)<250'], // 95% запросов должны быть быстрее 250мс
-    },
-    scenarios: {
-        // СЦЕНАРИЙ 1: Smoke Test (Проверка доступности)
-        // 1 пользователь в течение 15 секунд
-        smoke_test: {
-            executor: 'constant-vus',
-            vus: 1,
-            duration: '15s',
-            exec: 'runTest', // Какую функцию запускать
-        },
-
-        // СЦЕНАРИЙ 2: Load Test (Обычная нагрузка)
-        // Имитируем плавный приход 10 пользователей
-        load_test: {
-            executor: 'ramping-vus',
-            startVUs: 0,
-            stages: [
-                { duration: '20s', target: 10 }, // Разгон
-                { duration: '30s', target: 10 }, // Стабильная работа
-                { duration: '10s', target: 0 },  // Завершение
-            ],
-            startTime: '20s', // Запуск после Smoke теста
-            exec: 'runTest',
-        },
-
-        // СЦЕНАРИЙ 3: Stress Test (Предельная нагрузка)
-        // Проверяем, выдержит ли сайт резкий скачок до 50 пользователей
-        stress_test: {
-            executor: 'ramping-vus',
-            startVUs: 0,
-            stages: [
-                { duration: '10s', target: 50 }, // Резкий взлет
-                { duration: '20s', target: 50 }, // Удержание
-                { duration: '10s', target: 0 },  // Спад
-            ],
-            startTime: '80s', // Запуск после Load теста
-            exec: 'runTest',
-        },
-    },
+  thresholds: {
+    http_req_failed: ['rate<0.01'], // Тест провалено, якщо >1% помилок
+    http_req_duration: ['p(95)<250'], // 95% запитів мають бути швидшими за 250мс
+  },
+  stages: [
+    { duration: '30s', target: 10 }, // Тест 1: Smoke test (мале навантаження)
+    { duration: '1m', target: 50 },  // Тест 2: Load test (середнє навантаження)
+    { duration: '20s', target: 0 },  // Тест 3: Stress recovery (відновлення)
+  ],
 };
 
-// Общая логика теста для всех сценариев
-export function runTest() {
-    const res = http.get('http://localhost:8080');
-
-    check(res, {
-        'status is 200': (r) => r.status === 200,
-        'page contains welcome text': (r) => r.body.includes('index'), // Проверка контента (замените на текст из вашего html)
-    });
-
-    sleep(1);
-}
-
-// Default функция (нужна для k6, просто вызывает наш тест)
 export default function () {
-    runTest();
+  const url = 'http://localhost:8080';
+
+  // --- ТЕСТ 1: Доступність та статус-коди ---
+  const res = http.get(url);
+  const statusCheck = check(res, {
+    '1. Status is 200': (r) => r.status === 200,
+  });
+  if (statusCheck) successCounter.add(1);
+
+  // --- ТЕСТ 2: Перевірка контенту (чи завантажився саме наш сайт) ---
+  check(res, {
+    '2. Page has correct title': (r) => r.body.includes('<title>'), // Перевірка наявності тегу title
+    '2. Content-Type is HTML': (r) => r.headers['Content-Type'].includes('text/html'),
+  });
+
+  // --- ТЕСТ 3: Швидкість відповіді (Performance) ---
+  check(res, {
+    '3. Response time < 150ms': (r) => r.timings.duration < 150,
+    '3. TTFB (Time to First Byte) < 100ms': (r) => r.timings.waiting < 100,
+  });
+
+  sleep(1);
 }
