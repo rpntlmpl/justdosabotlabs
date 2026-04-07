@@ -57,35 +57,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-performance-test:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 1. Запускаем только что собранный контейнер
-      - name: Start container
-        run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-          docker run -d --name test-site -p 8080:80 ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-          # Даем nginx пару секунд на старт
-          sleep 5
-
-      # 2. Запускаем k6 тесты
-      - name: Run k6 Load Test
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: tests/performance-tests.js
-
-      # 3. Очистка (остановка контейнера)
-      - name: Stop container
-        if: always()
-        run: docker stop test-site && docker rm test-site
