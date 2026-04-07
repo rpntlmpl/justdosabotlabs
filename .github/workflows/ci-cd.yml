@@ -7,75 +7,64 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. Проверка линтером
-  lint:
+  linter:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ./Dockerfile
-          ignore: DL3008 
+      - name: Run HTML Hint
+        run: |
+          npm install -g htmlhint
+          htmlhint index.html
 
-  # 2. Сборка и Push
   build-and-push:
-    needs: lint
+    needs: linter
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
-          tags: |
-            type=ref,event=branch
-            latest
-
-      - name: Build and push Docker image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ghcr.io/totaltarizm/project3:latest
 
-  # 3. Нагрузочное тестирование (Новая часть для Лабы №3)
-  performance-tests:
+  test-quality:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run container for testing
-        run: |
-          # Запускаем контейнер локально в Runner на порту 8080
-          docker run -d --name test-app -p 8080:80 ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
-          # Ждем пару секунд, пока Nginx проснется
-          sleep 5
-
-      - name: Run k6 Load Tests
-        uses: grafana/k6-action@v0.3.1
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          filename: tests/performance-tests.js
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Stop and clean up
+      - name: Run Website Container
+        run: |
+          docker run -d --name test_app -p 8080:80 ghcr.io/totaltarizm/project3:latest
+          sleep 10
+
+      - name: Run k6 Load Test
+        run: |
+          docker run --rm --network host -i -v ${{ github.workspace }}:/io -w /io grafana/k6 run load-test.js
+
+      - name: Cleanup
         if: always()
-        run: docker stop test-app && docker rm test-app
+        run: docker rm -f test_app || true
